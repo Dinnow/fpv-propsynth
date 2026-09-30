@@ -14,7 +14,7 @@ and line the sound up automatically, muxing it back into the clip.
 ## Demo
 
 <!-- Replace with your demo video link -->
-📹 **Demo video:** _add your link here_
+📹 **Demo video:** https://youtu.be/BzCONEe_2F0
 
 ---
 
