@@ -186,6 +186,72 @@ def _mux(video_in, audio_in, video_out):
     subprocess.run(cmd, check=True, capture_output=True)
 
 
+def _composite_overlay(video_path, log, delta, audio_path, out_path, layout,
+                       progress=None):
+    """Draw the stick overlay onto each video frame and mux the aligned audio.
+
+    Video frames are read with OpenCV, the overlay is drawn per-frame from the
+    log's rcCommand (sampled at ``video_time + delta``), and raw frames are piped
+    to ffmpeg which encodes H.264 and adds ``audio_path``.
+    """
+    import cv2
+    from .overlay import draw_overlay
+
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError("ffmpeg not found on PATH; cannot render overlay.")
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise RuntimeError(f"Could not open video: {video_path}")
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    nframes = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+
+    # Pre-interpolate stick channels onto every output frame's log time.
+    idxs = np.arange(max(nframes, 1))
+    log_t = idxs / fps + delta
+    roll = np.interp(log_t, log.time_s, log.rc_roll)
+    pitch = np.interp(log_t, log.time_s, log.rc_pitch)
+    yaw = np.interp(log_t, log.time_s, log.rc_yaw)
+    thr = np.interp(log_t, log.time_s, log.throttle)
+
+    ext = os.path.splitext(out_path)[1].lower()
+    acodec = ["-c:a", "pcm_s16le"] if ext in (".mov", ".mkv") else \
+        ["-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart"]
+    cmd = [ffmpeg, "-y",
+           "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{w}x{h}",
+           "-r", f"{fps}", "-i", "-",
+           "-i", audio_path,
+           "-map", "0:v:0", "-map", "1:a:0",
+           "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18",
+           "-preset", "veryfast", *acodec, "-ar", "48000", "-ac", "2",
+           "-shortest", out_path]
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    i = 0
+    step = max(nframes // 20, 1) if nframes else 200
+    try:
+        while True:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            j = min(i, len(roll) - 1)
+            draw_overlay(frame, roll[j], pitch[j], yaw[j], thr[j], layout)
+            proc.stdin.write(frame.tobytes())
+            if progress and i % step == 0 and nframes:
+                progress(f"Compositing overlay... {100 * i // nframes}%")
+            i += 1
+    finally:
+        cap.release()
+        proc.stdin.close()
+        proc.wait()
+    if proc.returncode not in (0, None):
+        raise RuntimeError("ffmpeg failed while compositing the overlay.")
+
+
 def render_video(
     input_path: str,
     video_path: str,
@@ -204,6 +270,8 @@ def render_video(
     osd_roi=None,
     trim_to_onset: bool = True,
     timbre: Timbre | None = None,
+    overlay: bool = False,
+    overlay_layout=None,
     keep_wav: bool = False,
     progress=None,
 ) -> VideoRenderResult:
@@ -275,8 +343,15 @@ def render_video(
     say("Writing throttle-onset-trimmed audio (WAV)...")
     _write_wav(trim_wav, trimmed, sr)
 
-    say("Muxing audio into video (ffmpeg)...")
-    _mux(video_path, wav_path, output_path)
+    if overlay:
+        from .overlay import StickLayout
+        layout = overlay_layout or StickLayout()
+        say("Compositing stick overlay + audio into video (ffmpeg)...")
+        _composite_overlay(video_path, log, delta, wav_path, output_path,
+                           layout, progress=progress)
+    else:
+        say("Muxing audio into video (ffmpeg)...")
+        _mux(video_path, wav_path, output_path)
 
     # Convert both audio files to mp3 for convenience.
     def maybe_mp3(wav):

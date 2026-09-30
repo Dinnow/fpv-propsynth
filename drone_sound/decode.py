@@ -20,6 +20,9 @@ class LogData:
     motor: np.ndarray             # (N, 4) raw motor output (motorOutput min..max)
     eRPM: np.ndarray              # (N, 4) raw eRPM field (0 if not logged)
     throttle: np.ndarray          # (N,) rcCommand[3], typically ~1000..2000
+    rc_roll: np.ndarray           # (N,) rcCommand[0], ~ -500..500
+    rc_pitch: np.ndarray          # (N,) rcCommand[1], ~ -500..500
+    rc_yaw: np.ndarray            # (N,) rcCommand[2], ~ -500..500
     vbat: np.ndarray              # (N,) pack voltage in volts (0 if unavailable)
     accz: np.ndarray              # (N,) accSmooth[2] in g (0 if unavailable)
     has_erpm: bool                # True if any eRPM field carries signal
@@ -93,16 +96,23 @@ def load_log(path: str) -> LogData:
 
     ti = idx["time"]
     thr_i = idx.get("rcCommand[3]")
+    roll_i = idx.get("rcCommand[0]")
+    pitch_i = idx.get("rcCommand[1]")
+    yaw_i = idx.get("rcCommand[2]")
     vbat_i = idx.get("vbatLatest")
     accz_i = idx.get("accSmooth[2]")
 
     times, motors, erpms, thr, vbat, accz = [], [], [], [], [], []
+    roll, pitch, yaw = [], [], []
     for frame in parser.frames():
         d = frame.data
         times.append(d[ti])
         motors.append([d[i] for i in motor_i])
         erpms.append([d[i] for i in erpm_i] if erpm_i else [0] * len(motor_i))
         thr.append(d[thr_i] if thr_i is not None else 0)
+        roll.append(d[roll_i] if roll_i is not None else 0)
+        pitch.append(d[pitch_i] if pitch_i is not None else 0)
+        yaw.append(d[yaw_i] if yaw_i is not None else 0)
         vbat.append(d[vbat_i] if vbat_i is not None else 0)
         accz.append(d[accz_i] if accz_i is not None else 0)
 
@@ -111,6 +121,9 @@ def load_log(path: str) -> LogData:
     motor = np.asarray(motors, dtype=np.float64)
     eRPM = np.asarray(erpms, dtype=np.float64)
     throttle = np.asarray(thr, dtype=np.float64)
+    rc_roll = np.asarray(roll, dtype=np.float64)
+    rc_pitch = np.asarray(pitch, dtype=np.float64)
+    rc_yaw = np.asarray(yaw, dtype=np.float64)
 
     motor_min, motor_max, craft, firmware = _parse_header_meta(parser)
 
@@ -138,6 +151,9 @@ def load_log(path: str) -> LogData:
     motor = motor[order]
     eRPM = eRPM[order]
     throttle = throttle[order]
+    rc_roll = rc_roll[order]
+    rc_pitch = rc_pitch[order]
+    rc_yaw = rc_yaw[order]
     vbat_v = vbat_v[order]
     accz_g = accz_g[order]
 
@@ -146,6 +162,9 @@ def load_log(path: str) -> LogData:
         motor=motor,
         eRPM=eRPM,
         throttle=throttle,
+        rc_roll=rc_roll,
+        rc_pitch=rc_pitch,
+        rc_yaw=rc_yaw,
         vbat=vbat_v,
         accz=accz_g,
         has_erpm=has_erpm,

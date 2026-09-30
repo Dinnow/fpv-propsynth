@@ -11,6 +11,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from .render import render, render_video
 from .synth import Timbre, resolve_condition, resolve_weight
+from .overlay import StickLayout
 
 
 def _open_folder(path: str) -> None:
@@ -55,6 +56,12 @@ class App(ttk.Frame):
         self.reverb_var = tk.DoubleVar(value=-1.0)   # -1 => environment default
         self.whine_var = tk.DoubleVar(value=0.12)
         self.imb_var = tk.DoubleVar(value=0.25)
+        # stick overlay
+        self.overlay_var = tk.BooleanVar(value=False)
+        self.ovpos_var = tk.StringVar(value="bottom-center")
+        self.ovsize_var = tk.DoubleVar(value=0.12)
+        self.ovop_var = tk.DoubleVar(value=0.35)
+        self.ovmode_var = tk.StringVar(value="2")
         self.status = tk.StringVar(value="Select a .bbl file to begin.")
 
         row = 0
@@ -137,6 +144,32 @@ class App(ttk.Frame):
         row += 1
         ttk.Checkbutton(self, text="Trim sound to start at throttle onset",
                         variable=self.trim_var).grid(row=row, column=1, sticky="w")
+
+        row += 1
+        ttk.Checkbutton(self, text="Add stick overlay (Betaflight-style)",
+                        variable=self.overlay_var).grid(row=row, column=1, sticky="w")
+
+        row += 1
+        ttk.Label(self, text="Overlay position:").grid(row=row, column=0, sticky="w")
+        ttk.Combobox(self, textvariable=self.ovpos_var, width=14, state="readonly",
+                     values=["bottom-center", "bottom-left", "bottom-right",
+                             "top-center", "top-left", "top-right", "center"]).grid(
+            row=row, column=1, sticky="w")
+
+        row += 1
+        ttk.Label(self, text="Overlay mode:").grid(row=row, column=0, sticky="w")
+        ttk.Combobox(self, textvariable=self.ovmode_var, width=6, state="readonly",
+                     values=["1", "2", "3", "4"]).grid(row=row, column=1, sticky="w")
+
+        row += 1
+        ttk.Label(self, text="Overlay size:").grid(row=row, column=0, sticky="w")
+        ttk.Scale(self, from_=0.06, to=0.25, variable=self.ovsize_var,
+                  orient="horizontal", length=150).grid(row=row, column=1, sticky="w")
+
+        row += 1
+        ttk.Label(self, text="Overlay opacity:").grid(row=row, column=0, sticky="w")
+        ttk.Scale(self, from_=0.1, to=0.9, variable=self.ovop_var,
+                  orient="horizontal", length=150).grid(row=row, column=1, sticky="w")
 
         # --- sound character section ----------------------------------------
         row += 1
@@ -284,6 +317,12 @@ class App(ttk.Frame):
                         video_event_time=vtime, auto_video_sync=auto,
                         osd_roi=roi, trim_to_onset=self.trim_var.get(),
                         timbre=self._timbre(poles),
+                        overlay=self.overlay_var.get(),
+                        overlay_layout=StickLayout(
+                            position=self.ovpos_var.get(),
+                            box_frac=float(self.ovsize_var.get()),
+                            opacity=float(self.ovop_var.get()),
+                            mode=int(self.ovmode_var.get())),
                         progress=lambda m: self.after(0, self._set_status, m),
                     )
                     self.after(0, self._done_video, result)
