@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fpv-propsynth"
+version = "0.1.0"
+description = "Generate realistic FPV drone sound from Betaflight blackbox (.bbl) logs, and auto-sync it to your video."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "your name" }]
+keywords = ["fpv", "drone", "betaflight", "blackbox", "audio", "synthesis", "quadcopter"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Sound/Audio :: Sound Synthesis",
+]
+dependencies = [
+    "numpy>=1.24",
+    "orangebox>=0.4.0",
+]
+
+[project.optional-dependencies]
+video = ["opencv-python>=4.5"]   # automatic OSD-throttle video sync
+fast = ["scipy>=1.10"]           # faster noise filtering (optional)
+
+[project.scripts]
+propsynth = "drone_sound.cli:main"
+propsynth-gui = "drone_sound.gui:main"
+
+[project.urls]
+Homepage = "https://github.com/<your-username>/fpv-propsynth"
+Issues = "https://github.com/<your-username>/fpv-propsynth/issues"
+
+[tool.setuptools]
+packages = ["drone_sound"]

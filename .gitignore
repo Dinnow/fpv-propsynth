@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.python-version
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Media & generated artifacts (bring your own; don't commit logs/renders)
+*.bbl
+*.bfl
+*.mp3
+*.wav
+*.mp4
+*.mov
+*.MOV
+*.mkv
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

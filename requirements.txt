@@ -1,0 +1,11 @@
+# Core (required)
+numpy>=1.24
+orangebox>=0.4.0        # pure-Python Betaflight blackbox (.bbl) parser
+
+# Optional
+opencv-python>=4.5      # automatic OSD-throttle video sync (--auto-video-sync)
+scipy>=1.10             # faster noise filtering (code falls back to numpy without it)
+
+# External (NOT installed by pip — install separately, must be on PATH):
+#   ffmpeg + ffprobe   -> mp3/mov encoding and video probing/muxing
+#   https://ffmpeg.org/download.html
