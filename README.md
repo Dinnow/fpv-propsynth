@@ -174,6 +174,31 @@ The default OSD region suits a **centered throttle readout at 1080p**; for other
 resolutions pass `--osd-roi x,y,w,h`. If auto-detection is off, use `--video-event-time` (read
 the frame yourself) or `--video-offset`.
 
+## Stick overlay
+
+Draw a **Betaflight-style stick (gimbal) overlay** onto your video — two boxes with a
+crosshair and a moving dot, rendered from the log's `rcCommand` and synced the same way as
+the audio. You don't need Betaflight Blackbox Explorer's video export for this (that has no
+audio and a black background that's hard to composite); this draws it directly on your clip.
+
+```bash
+propsynth flight.bbl --video clip.mp4 --auto-video-sync --overlay -o final.mov
+```
+
+Overlay options:
+| Option | Default | Meaning |
+|---|---|---|
+| `--overlay` | off | Enable the stick overlay (re-encodes the video). |
+| `--overlay-position` | bottom-center | `bottom-center/left/right`, `top-*`, `center`. |
+| `--overlay-pos` | — | Custom center `x,y` as fractions `0..1` (overrides preset). |
+| `--overlay-size` | 0.12 | Box size as a fraction of frame height. |
+| `--overlay-opacity` | 0.35 | Box fill opacity `0..1`. |
+| `--overlay-mode` | 2 | Transmitter stick mode (1–4). Mode 2 = throttle+yaw left. |
+| `--overlay-no-labels` | off | Hide the µs value labels / "Mode N". |
+
+In the GUI: tick **"Add stick overlay"** and set position/mode/size/opacity.
+Enabling the overlay re-encodes the video (H.264), so it takes longer than an audio-only mux.
+
 ### DaVinci Resolve note
 Resolve on Windows often won't decode **AAC in MP4** (imports video-only). This tool defaults
 the muxed output to **`.mov` with uncompressed PCM audio**, which Resolve reads reliably. If

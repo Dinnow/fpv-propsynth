@@ -74,6 +74,25 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Throttle OSD region as 'x,y,w,h' pixels (override default).")
     g.add_argument("--no-trim", action="store_true",
                    help="Do not trim/silence audio before the throttle onset.")
+
+    # --- stick overlay -------------------------------------------------------
+    ov = p.add_argument_group("stick overlay (needs --video)")
+    ov.add_argument("--overlay", action="store_true",
+                    help="Draw a Betaflight-style stick overlay onto the video.")
+    ov.add_argument("--overlay-position", default="bottom-center",
+                    choices=["bottom-center", "bottom-left", "bottom-right",
+                             "top-center", "top-left", "top-right", "center"],
+                    help="Overlay position. Default bottom-center.")
+    ov.add_argument("--overlay-pos", default=None,
+                    help="Custom overlay center as 'x,y' fractions 0..1 (overrides preset).")
+    ov.add_argument("--overlay-size", type=float, default=0.12,
+                    help="Box size as fraction of frame height. Default 0.12.")
+    ov.add_argument("--overlay-opacity", type=float, default=0.35,
+                    help="Box fill opacity 0..1. Default 0.35.")
+    ov.add_argument("--overlay-mode", type=int, default=2, choices=[1, 2, 3, 4],
+                    help="Transmitter stick mode. Default 2.")
+    ov.add_argument("--overlay-no-labels", action="store_true",
+                    help="Hide the microsecond value labels / Mode text.")
     return p
 
 
@@ -97,6 +116,26 @@ def _build_timbre(args) -> Timbre:
         environment=args.environment,
         reverb_wet=wet,
         poles=args.poles,
+    )
+
+
+def _build_overlay(args):
+    """Construct a StickLayout from parsed CLI args."""
+    from .overlay import StickLayout
+    pos_frac = None
+    if args.overlay_pos:
+        try:
+            pos_frac = tuple(float(v) for v in args.overlay_pos.split(","))
+            assert len(pos_frac) == 2
+        except Exception:
+            pos_frac = None
+    return StickLayout(
+        position=args.overlay_position,
+        pos_frac=pos_frac,
+        box_frac=float(args.overlay_size),
+        opacity=float(args.overlay_opacity),
+        mode=int(args.overlay_mode),
+        show_labels=not args.overlay_no_labels,
     )
 
 
@@ -150,6 +189,7 @@ def main(argv=None) -> int:
                 video_event_time=args.video_event_time,
                 auto_video_sync=args.auto_video_sync, osd_roi=roi,
                 trim_to_onset=not args.no_trim, timbre=_build_timbre(args),
+                overlay=args.overlay, overlay_layout=_build_overlay(args),
                 keep_wav=args.keep_wav, progress=lambda m: print(m),
             )
         except Exception as exc:

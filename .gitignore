@@ -22,6 +22,8 @@ dist/
 *.mov
 *.MOV
 *.mkv
+*.webm
+*.webp
 
 # OS / editor
 .DS_Store
